@@ -36,7 +36,7 @@
   --space-8: 32px;
 
   --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
-  --font-jp: 'Noto Sans JP', sans-serif;
+  --font-kn: 'Noto Sans Kannada', sans-serif;
 
   --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
   --shadow-pop: 0 8px 20px rgba(0, 0, 0, 0.32);
@@ -433,7 +433,7 @@ input[type="checkbox"] {
   display: flex;
   gap: 4px;
   width: 100%;
-  max-width: 340px;
+  max-width: 420px;
   justify-content: space-around;
 }
 
@@ -441,7 +441,7 @@ input[type="checkbox"] {
   position: absolute;
   top: 0;
   left: 0;
-  width: calc(100% / 3);
+  width: calc(100% / 4);
   height: 100%;
   padding: 0 2px;
   transition: transform 0.32s var(--ease-spring);
@@ -496,6 +496,14 @@ input[type="checkbox"] {
   height: 20px;
 }
 
+.nav-icon-glyph {
+  display: block;
+  font-family: var(--font-kn);
+  font-size: 19px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
 .nav-label {
   font-size: 10px;
   letter-spacing: 0.01em;
@@ -517,7 +525,7 @@ input[type="checkbox"] {
   .footer-nav-inner {
     gap: 2px;
     padding: 5px;
-    max-width: 280px;
+    max-width: 340px;
     border-radius: 999px;
     backdrop-filter: blur(22px) saturate(180%);
     -webkit-backdrop-filter: blur(22px) saturate(180%);
@@ -923,25 +931,18 @@ input[type="checkbox"] {
   text-align: center;
 }
 
-.kanji-word {
-  font-family: var(--font-jp);
+.kannada-word {
+  font-family: var(--font-kn);
   font-size: clamp(44px, 13vw, 64px);
   line-height: 1.15;
-  font-weight: 700;
+  font-weight: 500;
   margin: 0;
   color: var(--text);
 }
 
-.hiragana-word {
-  font-size: clamp(17px, 4.6vw, 20px);
-  margin: 10px 0 4px;
-  color: var(--text-muted);
-  font-family: var(--font-jp);
-}
-
-.romaji-word-front {
-  font-size: clamp(13px, 3.6vw, 15px);
-  margin: 0;
+.transliteration-word {
+  font-size: clamp(15px, 4vw, 17px);
+  margin: 10px 0 0;
   color: var(--text-faint);
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -1039,25 +1040,19 @@ input[type="checkbox"] {
   margin: var(--space-2) 0 var(--space-5);
 }
 
-.japanese-word-back {
-  font-family: var(--font-jp);
+.kannada-word-back {
+  font-family: var(--font-kn);
   font-size: clamp(30px, 8.5vw, 38px);
-  font-weight: 700;
+  font-weight: 500;
   margin: 0 0 6px;
   color: var(--text);
 }
 
-.romaji-word {
+.transliteration-word-back {
   font-size: clamp(16px, 4.5vw, 18px);
   font-weight: 700;
-  margin: 0 0 4px;
-  color: #D9D8E6;
-}
-
-.katakana-word {
-  font-size: 13px;
   margin: 0 0 12px;
-  font-family: var(--font-jp);
+  color: #D9D8E6;
 }
 
 .meaning {
@@ -1081,258 +1076,6 @@ input[type="checkbox"] {
   font-weight: 700;
 }
 
-.stroke-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  margin: 0 0 var(--space-4);
-  padding: 10px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-sm);
-  transition: color 0.2s ease, background 0.2s ease;
-}
-
-.stroke-toggle:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.stroke-toggle svg {
-  transition: transform 0.2s ease;
-}
-
-.stroke-toggle.expanded svg {
-  transform: rotate(180deg);
-}
-
-.kanji-vg-container {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 var(--space-5);
-}
-
-.kanji-vg-container svg {
-  width: clamp(56px, 14vw, 72px);
-  height: clamp(56px, 14vw, 72px);
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: var(--radius-sm);
-  padding: 6px;
-}
-
-.kanji-vg-container path {
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 1000;
-  stroke-dashoffset: 1000;
-}
-
-.kanji-vg-container.playing path {
-  animation: draw-kanji 1.8s ease forwards;
-}
-
-.kanji-vg-container.playing path:nth-of-type(1) {
-  animation-delay: 0.1s;
-}
-
-.kanji-vg-container.playing path:nth-of-type(2) {
-  animation-delay: 0.3s;
-}
-
-.kanji-vg-container.playing path:nth-of-type(3) {
-  animation-delay: 0.5s;
-}
-
-.kanji-vg-container.playing path:nth-of-type(4) {
-  animation-delay: 0.7s;
-}
-
-.kanji-vg-container.playing path:nth-of-type(5) {
-  animation-delay: 0.9s;
-}
-
-.kanji-vg-container.playing path:nth-of-type(n+6) {
-  animation-delay: 1.1s;
-}
-
-@keyframes draw-kanji {
-  100% {
-    stroke-dashoffset: 0;
-  }
-}
-
-.grammar-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-faint);
-  margin-bottom: 10px;
-  font-weight: 700;
-}
-
-.conjugation-grid {
-  display: grid;
-  grid-template-columns: max-content 1fr 1fr;
-  gap: 7px 16px;
-  align-items: center;
-  margin-bottom: var(--space-5);
-  background: rgb(133 133 133 / 14%);
-  border: 2px solid rgb(57 57 57);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-}
-
-.conj-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  text-transform: capitalize;
-  font-weight: 600;
-}
-
-.conj-value-group {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.conj-value {
-  font-family: var(--font-jp);
-  font-size: 14px;
-  font-weight: 600;
-  color: #E4E3EF;
-}
-
-.conj-hiragana {
-  font-family: var(--font-jp);
-  font-size: 11.5px;
-}
-
-.conj-romaji {
-  font-size: 10.5px;
-  letter-spacing: 0.01em;
-}
-
-.conj-english {
-  font-size: 11.5px;
-  text-align: right;
-}
-
-.conj-group-start {
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  margin-top: 4px;
-  padding-top: 11px;
-}
-
-/* ---------- Word breakdown ---------- */
-.breakdown-section {
-  margin-bottom: var(--space-5);
-}
-
-.breakdown-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.breakdown-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  background: rgba(79, 168, 255, 0.1);
-  border: 1px solid rgba(79, 168, 255, 0.25);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-}
-
-.breakdown-text {
-  font-family: var(--font-jp);
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--level-2);
-}
-
-.breakdown-gloss {
-  font-size: 10px;
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.breakdown-plus {
-  color: var(--text-faint);
-  font-weight: 700;
-  font-size: 14px;
-}
-
-/* ---------- Particle usage ---------- */
-.particle-section {
-  margin-bottom: var(--space-5);
-}
-
-.particle-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.particle-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  background: rgb(133 133 133 / 14%);
-  border: 2px solid rgb(57 57 57);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-}
-
-.particle-tag {
-  flex-shrink: 0;
-  font-family: var(--font-jp);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--level-3);
-  background: rgba(244, 183, 64, 0.12);
-  border: 1px solid rgba(244, 183, 64, 0.3);
-  border-radius: 8px;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.particle-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.particle-phrase {
-  font-family: var(--font-jp);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.particle-english {
-  font-size: 12px;
-}
-
 .sentence-section {
   margin-bottom: var(--space-4);
 }
@@ -1345,15 +1088,15 @@ input[type="checkbox"] {
   text-align: center;
 }
 
-.sentence-japanese {
+.sentence-kannada {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 3px 7px;
-  font-family: var(--font-jp);
+  font-family: var(--font-kn);
   font-size: clamp(15px, 4.2vw, 17px);
   margin: 0 0 5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text);
   line-height: 1.5;
 }
@@ -1372,7 +1115,7 @@ input[type="checkbox"] {
   color: var(--accent);
 }
 
-.sentence-romaji {
+.sentence-transliteration {
   font-size: clamp(12px, 3.4vw, 13px);
   margin: 0;
   font-weight: 600;
@@ -1396,13 +1139,13 @@ input[type="checkbox"] {
 }
 
 .word-lookup-word {
-  font-family: var(--font-jp);
+  font-family: var(--font-kn);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--text);
 }
 
-.word-lookup-romaji {
+.word-lookup-translit {
   font-size: 12px;
   flex: 1;
 }
@@ -1417,17 +1160,6 @@ input[type="checkbox"] {
   font-size: 13px;
   color: var(--text-muted);
   margin: 0 0 4px;
-}
-
-.word-lookup-base {
-  font-size: 12px;
-  margin: 0 0 4px;
-}
-
-.word-lookup-base-word {
-  font-family: var(--font-jp);
-  color: var(--text);
-  font-weight: 600;
 }
 
 .word-lookup-tags {
@@ -1910,19 +1642,14 @@ input[type="checkbox"] {
 }
 
 .word-primary {
-  font-family: var(--font-jp);
+  font-family: var(--font-kn);
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--text);
   line-height: 1.2;
 }
 
-.word-secondary {
-  font-family: var(--font-jp);
-  font-size: 12px;
-}
-
-.word-romaji {
+.word-transliteration {
   font-size: 12px;
   color: var(--text-faint);
   font-weight: 600;
@@ -2282,12 +2009,6 @@ input[type="checkbox"] {
   padding: var(--space-6);
 }
 
-.stroke-loading-hint {
-  font-size: 12px;
-  color: var(--text-faint);
-  padding: 8px 0;
-}
-
 /* ---------- Card notes ---------- */
 .note-section {
   margin-top: var(--space-1);
@@ -2459,9 +2180,9 @@ input[type="checkbox"] {
 }
 
 .missed-thumb {
-  font-family: var(--font-jp);
+  font-family: var(--font-kn);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -2516,7 +2237,7 @@ input[type="checkbox"] {
   color: var(--text);
   border-color: var(--border-strong);
 }
-/* ---------- Home: word of the day carousel ---------- */
+/* ---------- Home: word of the day ---------- */
 .wotd {
   background: linear-gradient(160deg, var(--surface-2), var(--surface));
   border: 1px solid var(--border);
@@ -2533,32 +2254,14 @@ input[type="checkbox"] {
   padding: var(--space-4) var(--space-4) 0;
 }
 
-.wotd-track {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-}
-
-.wotd-track::-webkit-scrollbar {
-  display: none;
-}
-
 .wotd-slide {
-  flex: 0 0 100%;
-  scroll-snap-align: center;
   min-height: 230px;
-  padding: var(--space-5) var(--space-5) var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-}
-
-.wotd-slide .hiragana-word {
-  margin: 6px 0 2px;
 }
 
 .wotd-meaning {
@@ -2587,55 +2290,60 @@ input[type="checkbox"] {
   border: 1px solid rgba(255, 122, 89, 0.25);
 }
 
-.wotd-forms {
-  width: 100%;
-  margin: var(--space-4) 0 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* ---------- Alphabet tab ---------- */
+.alphabet-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-bottom: var(--space-4);
+}
+
+.alphabet-group {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
 }
 
-.wotd-form {
-  padding: 8px 12px;
+.alphabet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 8px;
+}
+
+.alphabet-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 2px 8px;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
+  transition: background 0.15s var(--ease-standard), border-color 0.15s var(--ease-standard), transform 0.15s var(--ease-standard);
 }
 
-.wotd-form dt {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-faint);
+.alphabet-cell:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-strong);
 }
 
-.wotd-form dd {
-  margin: 2px 0 0;
-  font-family: var(--font-jp);
-  font-size: 17px;
-  font-weight: 700;
+.alphabet-cell:active {
+  background: var(--accent-soft);
+  border-color: rgba(255, 122, 89, 0.3);
+  transform: scale(0.96);
+}
+
+.alphabet-kn {
+  font-family: var(--font-kn);
+  font-size: 24px;
+  line-height: 1.2;
   color: var(--text);
 }
 
-.wotd-dots {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 0 var(--space-4);
+.alphabet-translit {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-weight: 600;
 }
 
-.wotd-dot {
-  width: 7px;
-  height: 7px;
-  padding: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
-  transition: width 0.25s var(--ease-standard), background 0.25s var(--ease-standard);
-}
-
-.wotd-dot.active {
-  width: 20px;
-  border-radius: 4px;
-  background: var(--accent);
-}

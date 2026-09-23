@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import * as wanakana from 'wanakana';
 import packsRegistry from '../packs.json';
 import imageMap from '../image-map.json';
+import VARNAMALA from './varnamala.js';
 
 const RING_RADIUS = 42;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -73,6 +73,10 @@ const IconBook = (props) => (
   </svg>
 );
 
+const IconAlphabet = (props) => (
+  <span class="nav-icon-glyph" aria-hidden="true" {...props}>ಅ</span>
+);
+
 const IconCheckCircle = (props) => (
   <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <circle cx="12" cy="12" r="9" />
@@ -100,7 +104,7 @@ const SHOW_CARD_IMAGES = false;
 
 const CardImage = ({ card }) => {
   if (!SHOW_CARD_IMAGES) return null;
-  const emoji = imageMap[card.kanji || card.hiragana];
+  const emoji = imageMap[card.kannada];
   if (!emoji) return null;
   return (
     <div class="card-image" aria-hidden="true">
@@ -152,222 +156,66 @@ function hapticBuzz(pattern) {
 const isTypingTarget = (el) =>
   !!el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable);
 
-const formatSentenceRomaji = (sentence) => {
-  if (!sentence) return '';
-  if (sentence.spacedRomaji) return sentence.spacedRomaji;
-  if (sentence.spacedHiragana) return wanakana.toRomaji(sentence.spacedHiragana);
-  if (sentence.hiragana) return wanakana.toRomaji(sentence.hiragana);
-  return sentence.romaji ? sentence.romaji.replace(/([.?!,])/g, '$1 ') : '';
-};
-
-const hasKanji = (str) => !!str && /[一-龯]/.test(str);
-const stripPunctuation = (str) => (str || '').replace(/[。、！？!?「」・\s]/g, '');
+const stripPunctuation = (str) => (str || '').replace(/[.,!?।\s]/g, '');
 
 // Tokenize an example sentence into tappable word tokens. Uses the
-// pre-computed exampleSentence.tokens (each carrying its dictionary form and
-// meaning — see scripts/lib/sentence-tokens.js). Punctuation isn't tappable:
-// it's folded onto the neighbouring word as lead/trail text. Falls back to
-// the plain word-segmented strings when a card predates the token data.
-const OPENING_PUNCT = /^[「『（(]+$/;
+// pre-computed exampleSentence.tokens (each carrying its own transliteration
+// and meaning). Punctuation isn't tappable: it's folded onto the
+// neighbouring word as lead/trail text.
 const tokenizeSentence = (sentence) => {
-  if (!sentence) return [];
-  if (sentence.tokens) {
-    const out = [];
-    let lead = '';
-    sentence.tokens.forEach(tok => {
-      if (!tok.punct) {
-        out.push({ ...tok, lead });
-        lead = '';
-      } else if (OPENING_PUNCT.test(tok.ja)) {
-        lead += tok.ja;
-      } else if (out.length > 0) {
-        out[out.length - 1].trail = (out[out.length - 1].trail || '') + tok.ja;
-      }
-    });
-    return out;
-  }
-  const jaTokens = (sentence.spacedJapanese || sentence.japanese || '').split(' ').filter(Boolean);
-  const hiTokens = (sentence.spacedHiragana || sentence.hiragana || sentence.japanese || '').split(' ').filter(Boolean);
-  return jaTokens.map((ja, i) => ({ ja, hi: hiTokens[i] || ja }));
+  if (!sentence || !sentence.tokens) return [];
+  const out = [];
+  let lead = '';
+  sentence.tokens.forEach(tok => {
+    if (!tok.punct) {
+      out.push({ ...tok, lead });
+      lead = '';
+    } else if (out.length > 0) {
+      out[out.length - 1].trail = (out[out.length - 1].trail || '') + tok.kn;
+    } else {
+      lead += tok.kn;
+    }
+  });
+  return out;
 };
-
-// Mirrors build-cards.js's conjugateVerb/conjugateAdjective, but always
-// conjugates from the hiragana reading rather than kanji||hiragana — used to
-// show a kanji-free version of each word form when the Kanji toggle is off,
-// and to derive furigana/romaji readings for each form either way.
-const GODAN_HIRAGANA_RULES = {
-  'う': { i: 'い', a: 'わ', ta: 'った', te: 'って', e: 'え', o: 'お' },
-  'く': { i: 'き', a: 'か', ta: 'いた', te: 'いて', e: 'け', o: 'こ' },
-  'ぐ': { i: 'ぎ', a: 'が', ta: 'いだ', te: 'いで', e: 'げ', o: 'ご' },
-  'す': { i: 'し', a: 'さ', ta: 'した', te: 'して', e: 'せ', o: 'そ' },
-  'つ': { i: 'ち', a: 'た', ta: 'った', te: 'って', e: 'て', o: 'と' },
-  'ぬ': { i: 'に', a: 'な', ta: 'んだ', te: 'んで', e: 'ね', o: 'の' },
-  'ぶ': { i: 'び', a: 'ば', ta: 'んだ', te: 'んで', e: 'べ', o: 'ぼ' },
-  'む': { i: 'み', a: 'ま', ta: 'んだ', te: 'んで', e: 'め', o: 'も' },
-  'る': { i: 'り', a: 'ら', ta: 'った', te: 'って', e: 'れ', o: 'ろ' }
-};
-
-function conjugateVerbHiragana(base, verbType) {
-  const conj = { present: base };
-  if (verbType === 'suru') {
-    Object.assign(conj, { presentPolite: 'します', past: 'した', pastPolite: 'しました', negative: 'しない', negativePolite: 'しません', teForm: 'して', potential: 'できる' });
-  } else if (verbType === 'kuru') {
-    Object.assign(conj, { presentPolite: 'きます', past: 'きた', pastPolite: 'きました', negative: 'こない', negativePolite: 'きません', teForm: 'きて', potential: 'こられる' });
-  } else if (verbType === 'ichidan') {
-    const stem = base.slice(0, -1);
-    Object.assign(conj, { presentPolite: stem + 'ます', past: stem + 'た', pastPolite: stem + 'ました', negative: stem + 'ない', negativePolite: stem + 'ません', teForm: stem + 'て', potential: stem + 'られる' });
-  } else {
-    const last = base.slice(-1);
-    const stem = base.slice(0, -1);
-    const rules = GODAN_HIRAGANA_RULES[last] || GODAN_HIRAGANA_RULES['る'];
-    Object.assign(conj, {
-      presentPolite: stem + rules.i + 'ます',
-      past: stem + rules.ta,
-      pastPolite: stem + rules.i + 'ました',
-      negative: stem + rules.a + 'ない',
-      negativePolite: stem + rules.i + 'ません',
-      teForm: stem + rules.te,
-      potential: stem + rules.e + 'る'
-    });
-  }
-  return conj;
-}
-
-function conjugateAdjectiveHiragana(base) {
-  const stem = base.slice(0, -1);
-  return {
-    present: base,
-    presentPolite: base + 'です',
-    past: stem + 'かった',
-    pastPolite: stem + 'かったです',
-    negative: stem + 'くない',
-    negativePolite: stem + 'くないです',
-    teForm: stem + 'くて'
-  };
-}
-
-function getHiraganaConjugations(card) {
-  if (!card.conjugations || !card.hiragana) return null;
-  if (card.partOfSpeech === 'verb') return conjugateVerbHiragana(card.hiragana, card.verbType);
-  if (card.partOfSpeech === 'adjective') return conjugateAdjectiveHiragana(card.hiragana);
-  return null;
-}
-
-function getDisplayConjugations(card, showKanji) {
-  if (!card.conjugations) return null;
-  if (showKanji || !card.kanji) return card.conjugations;
-  return getHiraganaConjugations(card) || card.conjugations;
-}
-
-// Plain-English descriptor for a conjugated form, built from the word's
-// primary gloss rather than an attempted English tense conjugation (English
-// irregular verbs — "go"/"went", "eat"/"ate" — can't be derived mechanically,
-// so a wrong guess would be worse than a grammatical label).
-const CONJ_ENGLISH_LABELS = {
-  present: (m) => m,
-  presentPolite: (m) => `${m} (polite)`,
-  past: (m) => `${m} (past)`,
-  pastPolite: (m) => `${m} (past, polite)`,
-  negative: (m) => `not ${m}`,
-  negativePolite: (m) => `not ${m} (polite)`,
-  teForm: (m) => `${m} (~te form)`,
-  potential: (m) => `can ${m}`
-};
-
-function getConjugationEnglish(card, key) {
-  const base = card.englishMeanings?.[0];
-  if (!base) return '';
-  const stripped = base.replace(/^to\s+/i, '');
-  const template = CONJ_ENGLISH_LABELS[key];
-  return template ? template(stripped) : stripped;
-}
-
-const CONJ_KEYS = ['present', 'presentPolite', 'past', 'pastPolite', 'negative', 'negativePolite', 'teForm', 'potential'];
-// Plain/polite pairs (present+presentPolite, past+pastPolite, negative+negativePolite)
-// are visually grouped; teForm and potential — neither of which has a polite
-// counterpart — are grouped together as a trailing "other forms" group.
-const CONJ_GROUP_STARTS = new Set(['past', 'negative', 'teForm']);
-
-// The algorithmic (stem + fixed ending) breakdown always ends in a kana
-// character even in kanji mode, so only the stem needs to be swapped for its
-// hiragana reading. Hand-curated compound breakdowns (BREAKDOWN_BANK in
-// build-cards.js) have no stored reading per chunk, so they're hidden
-// rather than guessed at when kanji is off.
-function getDisplayBreakdown(card, showKanji) {
-  if (!card.breakdown) return null;
-  if (showKanji) return card.breakdown;
-  const isAlgorithmic = card.breakdown.length === 2 &&
-    (card.breakdown[1].gloss === 'dictionary-form ending' || card.breakdown[1].gloss === 'i-adjective ending');
-  if (!isAlgorithmic) return null;
-  if (!card.hiragana) return card.breakdown;
-  return [
-    { text: card.hiragana.slice(0, -1), gloss: card.breakdown[0].gloss },
-    card.breakdown[1]
-  ];
-}
-
-// Particle example phrases are template sentences with their own kanji
-// (verbs/adjectives beyond the card's word) and no stored hiragana reading,
-// so only the ones that already happen to be kana-only can be shown once
-// kanji is switched off.
-function getDisplayParticleUsage(card, showKanji) {
-  if (!card.particleUsage) return null;
-  if (showKanji) return card.particleUsage;
-  const clean = card.particleUsage.filter(p => !hasKanji(p.phrase));
-  return clean.length > 0 ? clean : null;
-}
 
 // Renders an example sentence as individually-tappable word tokens (Duolingo-
 // style word lookup) instead of one plain string.
-const SentenceTokens = ({ sentence, showKanji, onTokenTap }) => (
+const SentenceTokens = ({ sentence, onTokenTap }) => (
   tokenizeSentence(sentence).map((tok, i) => (
     <span
       key={i}
       class="sentence-token"
       onClick={(e) => { e.stopPropagation(); onTokenTap(tok); }}
     >
-      {tok.lead}{showKanji ? tok.ja : tok.hi}{tok.trail}
+      {tok.lead}{tok.kn}{tok.trail}
     </span>
   ))
 );
 
-const POS_LABELS = { name: 'proper noun', auxiliary: 'auxiliary', adnominal: 'adnominal', filler: 'filler' };
-
-const WordLookupPopover = ({ lookup, showKanji, onClose }) => {
+const WordLookupPopover = ({ lookup, onClose }) => {
   if (!lookup) return null;
   const { card, tok } = lookup;
   // Prefer the dictionary gloss for this token's own sense; fall back to the
   // deck card's meanings when the token carries none.
   const meanings = tok.m || card?.englishMeanings;
   const pos = card?.partOfSpeech || tok.pos;
-  const headword = showKanji ? tok.ja : tok.hi;
-  const baseForm = tok.base
-    ? (showKanji || !tok.baseHi ? tok.base : tok.baseHi)
-    : null;
   return (
     <div class="word-lookup-popover" onClick={(e) => e.stopPropagation()}>
       <div class="word-lookup-header">
-        <span class="word-lookup-word">{headword}</span>
-        <span class="word-lookup-romaji muted">{hasKanji(tok.hi) ? '' : wanakana.toRomaji(tok.hi)}</span>
+        <span class="word-lookup-word">{tok.kn}</span>
+        <span class="word-lookup-translit muted">{tok.translit}</span>
         <button class="word-lookup-close" onClick={onClose} aria-label="Close word lookup">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
-      {baseForm && (
-        <p class="word-lookup-base muted">
-          Dictionary form: <span class="word-lookup-base-word">{baseForm}</span>
-          {showKanji && tok.baseHi && tok.baseHi !== tok.base && ` (${tok.baseHi})`}
-        </p>
-      )}
       {meanings && meanings.length > 0 ? (
         <p class="word-lookup-meaning">{meanings.join(', ')}</p>
       ) : (
-        <p class="word-lookup-meaning muted">
-          {tok.pos === 'name' ? 'A name — not in the dictionary' : 'No dictionary entry found'}
-        </p>
+        <p class="word-lookup-meaning muted">No dictionary entry found</p>
       )}
       <div class="word-lookup-tags">
-        {pos && <span class="pos-pill muted">{POS_LABELS[pos] || pos}</span>}
+        {pos && <span class="pos-pill muted">{pos}</span>}
         {card && <span class="in-deck-pill">In your deck</span>}
       </div>
     </div>
@@ -401,98 +249,28 @@ const NoteSection = ({ noteText, editing, onStartEdit, onChange, onDone }) => (
   </div>
 );
 
-// Home's "Word of the day": a two-slide swipeable carousel — the word itself,
-// then its breakdown. The Kanji toggle lives here since it drives every card.
-const WordOfDay = ({ card, showKanji, onToggleKanji, learnt }) => {
-  const trackRef = useRef(null);
-  const [slide, setSlide] = useState(0);
-  const useKanji = showKanji && !!card.kanji;
-  const headword = useKanji ? card.kanji : card.hiragana;
-  const breakdown = getDisplayBreakdown(card, showKanji);
-  const forms = [
-    useKanji && { label: 'Kanji', value: card.kanji },
-    { label: 'Hiragana', value: card.hiragana },
-    { label: 'Katakana', value: card.katakana },
-    { label: 'Romaji', value: card.romaji }
-  ].filter(Boolean);
+// Home's "Word of the day": the word itself, its transliteration, meaning,
+// and a play button.
+const WordOfDay = ({ card, learnt }) => (
+  <section class="wotd" aria-label="Word of the day">
+    <div class="wotd-topbar">
+      <span class="tag-chip">Word of the day</span>
+    </div>
 
-  const goTo = (i) => {
-    const el = trackRef.current;
-    if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
-  };
-
-  return (
-    <section class="wotd" aria-label="Word of the day">
-      <div class="wotd-topbar">
-        <span class="tag-chip">Word of the day</span>
-        {card.kanji && (
-          <label class="setting-toggle">
-            <input type="checkbox" checked={showKanji} onChange={onToggleKanji} aria-label="Show kanji" />
-            <span>Kanji</span>
-          </label>
-        )}
+    <div class="wotd-slide">
+      <p class="kannada-word">{card.kannada}</p>
+      <p class="transliteration-word muted">{card.transliteration}</p>
+      <p class="wotd-meaning">{card.englishMeanings?.slice(0, 3).join(', ')}</p>
+      <div class="wotd-meta">
+        <span class="pos-pill muted">{card.partOfSpeech}</span>
+        {learnt && <span class="in-deck-pill">Learnt</span>}
+        <button class="wotd-audio" aria-label="Play pronunciation" onClick={() => speak(card.audio.ttsText, card.audio.lang)}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="4 8 8 8 12 4 12 20 8 16 4 16 4 8"></polygon><path d="M16 8.5a4.5 4.5 0 0 1 0 7"></path><path d="M18.5 6a8 8 0 0 1 0 12"></path></svg>
+        </button>
       </div>
-
-      <div
-        class="wotd-track"
-        ref={trackRef}
-        onScroll={(e) => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
-      >
-        <div class="wotd-slide">
-          <p class="kanji-word">{headword}</p>
-          {useKanji && <p class="hiragana-word muted">{card.hiragana}</p>}
-          <p class="romaji-word-front muted">{card.romaji}</p>
-          <p class="wotd-meaning">{card.englishMeanings?.slice(0, 3).join(', ')}</p>
-          <div class="wotd-meta">
-            <span class="pos-pill muted">{card.partOfSpeech}</span>
-            {learnt && <span class="in-deck-pill">Learnt</span>}
-            <button class="wotd-audio" aria-label="Play pronunciation" onClick={() => speak(card.audio.ttsText, card.audio.lang)}>
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="4 8 8 8 12 4 12 20 8 16 4 16 4 8"></polygon><path d="M16 8.5a4.5 4.5 0 0 1 0 7"></path><path d="M18.5 6a8 8 0 0 1 0 12"></path></svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="wotd-slide">
-          <div class="grammar-title">Word breakdown</div>
-          {breakdown && breakdown.length > 0 && (
-            <div class="breakdown-row">
-              {breakdown.map((part, i) => (
-                <React.Fragment key={i}>
-                  {i > 0 && <span class="breakdown-plus">+</span>}
-                  <div class="breakdown-chip">
-                    <span class="breakdown-text">{part.text}</span>
-                    <span class="breakdown-gloss">{part.gloss}</span>
-                  </div>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-          <dl class="wotd-forms">
-            {forms.map(f => (
-              <div key={f.label} class="wotd-form">
-                <dt>{f.label}</dt>
-                <dd>{f.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </div>
-
-      <div class="wotd-dots" role="tablist" aria-label="Word of the day slides">
-        {['Word', 'Breakdown'].map((label, i) => (
-          <button
-            key={label}
-            role="tab"
-            aria-selected={slide === i}
-            aria-label={label}
-            class={`wotd-dot ${slide === i ? 'active' : ''}`}
-            onClick={() => goTo(i)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-};
+    </div>
+  </section>
+);
 
 export default function App() {
   const [allCards, setAllCards] = useState([]);
@@ -501,11 +279,7 @@ export default function App() {
 
   // App state
   const [screen, setScreen] = useState('home'); // 'home' | 'arena' | 'summary'
-  const [homeView, setHomeView] = useState('home'); // 'home' | 'learn' | 'all-words'
-  const [showKanji, setShowKanji] = useState(() => {
-    const saved = localStorage.getItem('flashcards_show_kanji');
-    return saved !== null ? saved === 'true' : true;
-  });
+  const [homeView, setHomeView] = useState('home'); // 'home' | 'learn' | 'all-words' | 'alphabet'
   const [progress, setProgress] = useState(() => {
     try {
       const saved = localStorage.getItem('flashcards_progress');
@@ -541,8 +315,6 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [maxIndexReached, setMaxIndexReached] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [strokeShown, setStrokeShown] = useState(false);
-  const [svgsMap, setSvgsMap] = useState({});
   const [sentenceLookup, setSentenceLookup] = useState(null);
   const [noteEditing, setNoteEditing] = useState(false);
   const [modalNoteEditing, setModalNoteEditing] = useState(false);
@@ -562,7 +334,6 @@ export default function App() {
   const [tierFilter, setTierFilter] = useState('all'); // 'all' | 1 | 2 | 3 | 4
   const [modalCardIndex, setModalCardIndex] = useState(null); // index in filtered cards
   const [modalIsFlipped, setModalIsFlipped] = useState(false);
-  const [modalStrokeShown, setModalStrokeShown] = useState(false);
 
   // Expandable card actions
   const [expandedCardKey, setExpandedCardKey] = useState(null);
@@ -584,13 +355,6 @@ export default function App() {
         setLoading(false);
       });
   }, []);
-
-  // Sync showKanji to localStorage
-  const handleToggleKanji = (e) => {
-    const val = e.target.checked;
-    setShowKanji(val);
-    localStorage.setItem('flashcards_show_kanji', val);
-  };
 
   const splashFadingOut = !loading && minSplashElapsed;
   useEffect(() => {
@@ -652,27 +416,10 @@ export default function App() {
     setMaxIndexReached(0);
     setCurrentIndex(0);
     setIsFlipped(false);
-    setStrokeShown(false);
     setScreen('arena');
   };
 
   const currentCard = remaining[currentIndex];
-
-  // Fetch stroke order SVGs if requested
-  useEffect(() => {
-    if (strokeShown && currentCard && currentCard.strokeOrderSvgs) {
-      currentCard.strokeOrderSvgs.forEach(path => {
-        if (!svgsMap[path]) {
-          fetch(`/${path}`)
-            .then(res => res.text())
-            .then(text => {
-              setSvgsMap(prev => ({ ...prev, [path]: text }));
-            })
-            .catch(console.error);
-        }
-      });
-    }
-  }, [strokeShown, currentCard, svgsMap]);
 
   // Check scroll container overflow
   const checkScrollFade = useCallback(() => {
@@ -683,7 +430,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setStrokeShown(false);
     setSentenceLookup(null);
     setNoteEditing(false);
     setSwipeOverlay({ know: 0, dont: 0 });
@@ -807,12 +553,10 @@ export default function App() {
     return allCards.filter(card => {
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase().trim();
-        const matchKanji = card.kanji && card.kanji.toLowerCase().includes(q);
-        const matchHiragana = card.hiragana && card.hiragana.toLowerCase().includes(q);
-        const matchKatakana = card.katakana && card.katakana.toLowerCase().includes(q);
-        const matchRomaji = card.romaji && card.romaji.toLowerCase().includes(q);
+        const matchKannada = card.kannada && card.kannada.toLowerCase().includes(q);
+        const matchTranslit = card.transliteration && card.transliteration.toLowerCase().includes(q);
         const matchEnglish = card.englishMeanings && card.englishMeanings.some(m => m.toLowerCase().includes(q));
-        if (!matchKanji && !matchHiragana && !matchKatakana && !matchRomaji && !matchEnglish) {
+        if (!matchKannada && !matchTranslit && !matchEnglish) {
           return false;
         }
       }
@@ -826,31 +570,10 @@ export default function App() {
   }, [allCards, searchTerm, statusFilter, tierFilter, selectedPackId, progress]);
 
   const modalCard = modalCardIndex !== null ? filteredCards[modalCardIndex] : null;
-  const modalDisplayBreakdown = modalCard ? getDisplayBreakdown(modalCard, showKanji) : null;
-  const modalDisplayConjugations = modalCard ? getDisplayConjugations(modalCard, showKanji) : null;
-  const modalHiraganaConjugations = modalCard ? getHiraganaConjugations(modalCard) : null;
-  const modalDisplayParticleUsage = modalCard ? getDisplayParticleUsage(modalCard, showKanji) : null;
-
-  // Fetch stroke order SVGs for modal card if requested
-  useEffect(() => {
-    if (modalStrokeShown && modalCard && modalCard.strokeOrderSvgs) {
-      modalCard.strokeOrderSvgs.forEach(path => {
-        if (!svgsMap[path]) {
-          fetch(`/${path}`)
-            .then(res => res.text())
-            .then(text => {
-              setSvgsMap(prev => ({ ...prev, [path]: text }));
-            })
-            .catch(console.error);
-        }
-      });
-    }
-  }, [modalStrokeShown, modalCard, svgsMap]);
 
   // Reset modal state when modalCard changes
   useEffect(() => {
     setModalIsFlipped(false);
-    setModalStrokeShown(false);
     setSentenceLookup(null);
     setModalNoteEditing(false);
   }, [modalCardIndex]);
@@ -1096,29 +819,22 @@ export default function App() {
   const wordIndex = React.useMemo(() => {
     const map = new Map();
     allCards.forEach(card => {
-      [card.kanji, card.hiragana, card.katakana].forEach(form => {
-        if (form && !map.has(form)) map.set(form, card);
-      });
+      if (card.kannada && !map.has(card.kannada)) map.set(card.kannada, card);
     });
     return map;
   }, [allCards]);
 
   const lookupSentenceToken = (tok) => {
-    const cleanJa = stripPunctuation(tok.ja);
-    if (!cleanJa) return;
-    // Match the deck by dictionary form first (拾っ -> 拾う), then by the
-    // surface spelling and its reading.
-    const match = (tok.base && wordIndex.get(tok.base))
-      || wordIndex.get(cleanJa)
-      || wordIndex.get(stripPunctuation(tok.hi))
-      || null;
-    setSentenceLookup(prev => (prev && prev.tok.ja === tok.ja && prev.tok.hi === tok.hi ? null : { tok, card: match }));
+    const clean = stripPunctuation(tok.kn);
+    if (!clean) return;
+    const match = wordIndex.get(clean) || null;
+    setSentenceLookup(prev => (prev && prev.tok.kn === tok.kn ? null : { tok, card: match }));
   };
 
   const splashScreen = !splashRemoved && (
     <div id="splash-screen" class={splashFadingOut ? 'fade-out' : ''}>
-      <div class="splash-mark">日</div>
-      <p class="splash-title">Japanese Flashcards</p>
+      <div class="splash-mark">ಅ</div>
+      <p class="splash-title">Kannada Flashcards</p>
       {loading && <div class="splash-spinner" aria-label="Loading"></div>}
     </div>
   );
@@ -1144,12 +860,6 @@ export default function App() {
   if (loading || !splashRemoved) {
     return splashScreen;
   }
-
-  const displayKanji = showKanji && currentCard?.kanji;
-  const currentDisplayBreakdown = currentCard ? getDisplayBreakdown(currentCard, showKanji) : null;
-  const currentDisplayConjugations = currentCard ? getDisplayConjugations(currentCard, showKanji) : null;
-  const currentHiraganaConjugations = currentCard ? getHiraganaConjugations(currentCard) : null;
-  const currentDisplayParticleUsage = currentCard ? getDisplayParticleUsage(currentCard, showKanji) : null;
 
   const renderCollectionCard = ({ key, kind, filterValue, badge, title, cards, color, learntCards, knownCount, total, percent }) => (
     <div key={key} class="collection-card">
@@ -1231,7 +941,7 @@ export default function App() {
         <div id="home-screen">
           {/* Top Hero Section */}
           <div class="home-hero-section">
-            <h1 class="hero-title">Japanese Flashcards</h1>
+            <h1 class="hero-title">Kannada Flashcards</h1>
 
             <div class="mastery-ring" role="img" aria-label={`${masteryPercent}% of words mastered`}>
               <svg viewBox="0 0 100 100" width="100%" height="100%">
@@ -1291,14 +1001,21 @@ export default function App() {
               </div>
             )}
 
+            {homeView === 'alphabet' && (
+              <div class="sheet-header">
+                <div class="sheet-title-group">
+                  <h2 class="sheet-title">Alphabet</h2>
+                  <span class="sheet-subtitle">ಕನ್ನಡ ವರ್ಣಮಾಲೆ — tap a letter to hear it</span>
+                </div>
+              </div>
+            )}
+
             {/* HOME: word of the day, a recommended lesson, then other packs */}
             {homeView === 'home' && (
               <div class="collections-grid">
                 {wordOfDay && (
                   <WordOfDay
                     card={wordOfDay}
-                    showKanji={showKanji}
-                    onToggleKanji={handleToggleKanji}
                     learnt={progress[wordOfDay.id]?.status === 'know'}
                   />
                 )}
@@ -1335,7 +1052,7 @@ export default function App() {
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     <input
                       type="text"
-                      placeholder="Search Japanese, English, Romaji..."
+                      placeholder="Search Kannada, English, transliteration..."
                       aria-label="Search words"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -1414,8 +1131,6 @@ export default function App() {
                   <div class="words-list-grid">
                     {filteredCards.map((card, idx) => {
                       const isLearnt = progress[card.id]?.status === 'know';
-                      const mainWord = showKanji && card.kanji ? card.kanji : card.hiragana;
-                      const subWord = showKanji && card.kanji ? card.hiragana : '';
 
                       return (
                         <div
@@ -1424,9 +1139,8 @@ export default function App() {
                           onClick={() => setModalCardIndex(idx)}
                         >
                           <div class="row-left">
-                            <div class="word-primary">{mainWord}</div>
-                            {subWord && <div class="word-secondary muted">{subWord}</div>}
-                            <div class="word-romaji">{card.romaji}</div>
+                            <div class="word-primary">{card.kannada}</div>
+                            <div class="word-transliteration">{card.transliteration}</div>
                           </div>
 
                           <div class="row-middle">
@@ -1460,7 +1174,30 @@ export default function App() {
               </div>
             )}
 
-            <p class="corpus-credit muted">Example sentences adapted from the Tanaka Corpus (CC BY 2.0). Word meanings from JMdict (EDRDG). Illustrations: Twemoji (CC BY 4.0).</p>
+            {/* ALPHABET VIEW */}
+            {homeView === 'alphabet' && (
+              <div class="alphabet-container">
+                {VARNAMALA.map(group => (
+                  <div class="alphabet-group" key={group.label}>
+                    <h3 class="collections-section-label">{group.label}</h3>
+                    <div class="alphabet-grid">
+                      {group.letters.map(l => (
+                        <button
+                          key={l.kn}
+                          class="alphabet-cell"
+                          onClick={() => speak(l.kn, 'kn-IN')}
+                        >
+                          <span class="alphabet-kn">{l.kn}</span>
+                          <span class="alphabet-translit">{l.translit}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p class="corpus-credit muted">Illustrations: Twemoji (CC BY 4.0).</p>
           </div>
 
           {/* Fixed Footer Navigation */}
@@ -1468,7 +1205,7 @@ export default function App() {
             <div class="footer-nav-inner" role="tablist">
               <div
                 class="footer-nav-marker"
-                style={{ transform: `translateX(${['home', 'learn', 'all-words'].indexOf(homeView) * 100}%)` }}
+                style={{ transform: `translateX(${['home', 'learn', 'all-words', 'alphabet'].indexOf(homeView) * 100}%)` }}
                 aria-hidden="true"
               ></div>
               <button
@@ -1497,6 +1234,15 @@ export default function App() {
               >
                 <span class="nav-icon"><IconBook width="20" height="20" /></span>
                 <span class="nav-label">Words</span>
+              </button>
+              <button
+                role="tab"
+                aria-selected={homeView === 'alphabet'}
+                class={`footer-nav-btn ${homeView === 'alphabet' ? 'active' : ''}`}
+                onClick={() => setHomeView('alphabet')}
+              >
+                <span class="nav-icon"><IconAlphabet /></span>
+                <span class="nav-label">Alphabet</span>
               </button>
             </div>
           </footer>
@@ -1557,9 +1303,8 @@ export default function App() {
                     <div class="card-body">
                       <CardImage card={modalCard} />
                       <div class="word-group">
-                        <p class="kanji-word">{showKanji && modalCard.kanji ? modalCard.kanji : modalCard.hiragana}</p>
-                        <p class="hiragana-word muted">{showKanji && modalCard.kanji ? modalCard.hiragana : ''}</p>
-                        <p class="romaji-word-front muted">{modalCard.romaji}</p>
+                        <p class="kannada-word">{modalCard.kannada}</p>
+                        <p class="transliteration-word muted">{modalCard.transliteration}</p>
                       </div>
                       <button
                         class="btn-audio"
@@ -1582,14 +1327,10 @@ export default function App() {
                         <span class="muted">Word Details</span>
                       </div>
                       <div class="back-word-group">
-                        <p class="japanese-word-back">{showKanji && modalCard.kanji ? modalCard.kanji : modalCard.hiragana}</p>
-                        <p class="romaji-word">{modalCard.romaji}</p>
-                        <p class="katakana-word muted">{modalCard.katakana}</p>
+                        <p class="kannada-word-back">{modalCard.kannada}</p>
+                        <p class="transliteration-word-back">{modalCard.transliteration}</p>
                         <p class="meaning">{modalCard.englishMeanings?.join(', ')}</p>
-                        <span class="pos-pill muted">
-                          {modalCard.partOfSpeech}
-                          {modalCard.verbType ? ` (${modalCard.verbType})` : modalCard.isNaAdjective ? ' (na-adjective)' : ''}
-                        </span>
+                        <span class="pos-pill muted">{modalCard.partOfSpeech}</span>
                       </div>
 
                       <NoteSection
@@ -1600,107 +1341,21 @@ export default function App() {
                         onDone={() => setModalNoteEditing(false)}
                       />
 
-                      {/* Stroke order */}
-                      {showKanji && modalCard.strokeOrderSvgs && modalCard.strokeOrderSvgs.length > 0 && (
-                        <>
-                          <button
-                            class={`stroke-toggle ${modalStrokeShown ? 'expanded' : ''}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalStrokeShown(prev => !prev);
-                            }}
-                          >
-                            <span>{modalStrokeShown ? 'Hide stroke order' : 'Show stroke order'}</span>
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                          </button>
-                          {modalStrokeShown && (
-                            <div class="kanji-vg-container playing">
-                              {modalCard.strokeOrderSvgs.every(path => !svgsMap[path]) && (
-                                <p class="stroke-loading-hint">Loading stroke order…</p>
-                              )}
-                              {modalCard.strokeOrderSvgs.map(path => (
-                                <div key={path} dangerouslySetInnerHTML={{ __html: svgsMap[path] || '' }} />
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {/* Breakdown */}
-                      {modalDisplayBreakdown && modalDisplayBreakdown.length > 0 && (
-                        <div class="breakdown-section">
-                          <div class="grammar-title">Word Breakdown</div>
-                          <div class="breakdown-row">
-                            {modalDisplayBreakdown.map((part, i) => (
-                              <React.Fragment key={i}>
-                                {i > 0 && <span class="breakdown-plus">+</span>}
-                                <div class="breakdown-chip">
-                                  <span class="breakdown-text">{part.text}</span>
-                                  <span class="breakdown-gloss">{part.gloss}</span>
-                                </div>
-                              </React.Fragment>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Conjugations */}
-                      {modalDisplayConjugations && (
-                        <div class="grammar-section">
-                          <div class="grammar-title">Tense &amp; Forms</div>
-                          <div class="conjugation-grid">
-                            {CONJ_KEYS.map(k => (
-                              modalDisplayConjugations[k] ? (
-                                <React.Fragment key={k}>
-                                  <div class={`conj-label ${CONJ_GROUP_STARTS.has(k) ? 'conj-group-start' : ''}`}>{k.replace(/([A-Z])/g, ' $1').toLowerCase()}</div>
-                                  <div class={`conj-value-group ${CONJ_GROUP_STARTS.has(k) ? 'conj-group-start' : ''}`}>
-                                    <div class="conj-value">{modalDisplayConjugations[k]}</div>
-                                    {modalHiraganaConjugations?.[k] && modalHiraganaConjugations[k] !== modalDisplayConjugations[k] && (
-                                      <div class="conj-hiragana muted">{modalHiraganaConjugations[k]}</div>
-                                    )}
-                                    <div class="conj-romaji muted">{wanakana.toRomaji(modalHiraganaConjugations?.[k] || modalDisplayConjugations[k])}</div>
-                                  </div>
-                                  <div class={`conj-english muted ${CONJ_GROUP_STARTS.has(k) ? 'conj-group-start' : ''}`}>{getConjugationEnglish(modalCard, k)}</div>
-                                </React.Fragment>
-                              ) : null
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Particle Usage */}
-                      {modalDisplayParticleUsage && modalDisplayParticleUsage.length > 0 && (
-                        <div class="particle-section">
-                          <div class="grammar-title">Common Particles</div>
-                          <div class="particle-list">
-                            {modalDisplayParticleUsage.map((p, i) => (
-                              <div key={i} class="particle-row">
-                                <span class="particle-tag">{p.particle}</span>
-                                <div class="particle-text">
-                                  <span class="particle-phrase">{p.phrase}</span>
-                                  <span class="particle-english muted">{p.english}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
                       {/* Example Sentence */}
                       {modalCard.exampleSentence && (
                         <div class="sentence-section" style={{ display: 'block' }}>
                           <div class="sentence-card">
-                            <p class="sentence-japanese">
-                              <SentenceTokens sentence={modalCard.exampleSentence} showKanji={showKanji} onTokenTap={lookupSentenceToken} />
+                            <p class="sentence-kannada">
+                              <SentenceTokens sentence={modalCard.exampleSentence} onTokenTap={lookupSentenceToken} />
                             </p>
-                            {formatSentenceRomaji(modalCard.exampleSentence) && (
-                              <p class="sentence-romaji muted">
-                                {formatSentenceRomaji(modalCard.exampleSentence)}
+                            {modalCard.exampleSentence.transliteration && (
+                              <p class="sentence-transliteration muted">
+                                {modalCard.exampleSentence.transliteration}
                               </p>
                             )}
                             <div class="sentence-divider"></div>
                             <p class="sentence-english">{modalCard.exampleSentence.english}</p>
-                            <WordLookupPopover lookup={sentenceLookup} showKanji={showKanji} onClose={() => setSentenceLookup(null)} />
+                            <WordLookupPopover lookup={sentenceLookup} onClose={() => setSentenceLookup(null)} />
                           </div>
                         </div>
                       )}
@@ -1742,10 +1397,6 @@ export default function App() {
               {currentIndex + 1} of {remaining.length} cards
               {currentIndex === remaining.length - 1 && <span class="last-card-badge">Last card</span>}
             </p>
-            <label class="setting-toggle">
-              <input type="checkbox" checked={showKanji} onChange={handleToggleKanji} aria-label="Show kanji" />
-              <span>Kanji</span>
-            </label>
           </div>
 
           <div id="card-arena">
@@ -1768,9 +1419,8 @@ export default function App() {
                   <div class="card-body">
                     <CardImage card={currentCard} />
                     <div class="word-group">
-                      <p class="kanji-word">{displayKanji ? currentCard.kanji : currentCard.hiragana}</p>
-                      <p class="hiragana-word muted">{displayKanji ? currentCard.hiragana : ''}</p>
-                      <p class="romaji-word-front muted">{currentCard.romaji}</p>
+                      <p class="kannada-word">{currentCard.kannada}</p>
+                      <p class="transliteration-word muted">{currentCard.transliteration}</p>
                     </div>
                     <button
                       class="btn-audio"
@@ -1793,14 +1443,10 @@ export default function App() {
                       <span class="card-counter-back muted">{currentIndex + 1} / {remaining.length}</span>
                     </div>
                     <div class="back-word-group">
-                      <p class="japanese-word-back">{displayKanji ? currentCard.kanji : currentCard.hiragana}</p>
-                      <p class="romaji-word">{currentCard.romaji}</p>
-                      <p class="katakana-word muted">{currentCard.katakana}</p>
+                      <p class="kannada-word-back">{currentCard.kannada}</p>
+                      <p class="transliteration-word-back">{currentCard.transliteration}</p>
                       <p class="meaning">{currentCard.englishMeanings?.join(', ')}</p>
-                      <span class="pos-pill muted">
-                        {currentCard.partOfSpeech}
-                        {currentCard.verbType ? ` (${currentCard.verbType})` : currentCard.isNaAdjective ? ' (na-adjective)' : ''}
-                      </span>
+                      <span class="pos-pill muted">{currentCard.partOfSpeech}</span>
                     </div>
 
                     <NoteSection
@@ -1811,108 +1457,21 @@ export default function App() {
                       onDone={() => setNoteEditing(false)}
                     />
 
-                    {/* Stroke order */}
-                    {displayKanji && currentCard.strokeOrderSvgs && currentCard.strokeOrderSvgs.length > 0 && (
-                      <>
-                        <button
-                          class={`stroke-toggle ${strokeShown ? 'expanded' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setStrokeShown(prev => !prev);
-                            setTimeout(checkScrollFade, 60);
-                          }}
-                        >
-                          <span>{strokeShown ? 'Hide stroke order' : 'Show stroke order'}</span>
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                        </button>
-                        {strokeShown && (
-                          <div class="kanji-vg-container playing">
-                            {currentCard.strokeOrderSvgs.every(path => !svgsMap[path]) && (
-                              <p class="stroke-loading-hint">Loading stroke order…</p>
-                            )}
-                            {currentCard.strokeOrderSvgs.map(path => (
-                              <div key={path} dangerouslySetInnerHTML={{ __html: svgsMap[path] || '' }} />
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {/* Breakdown */}
-                    {currentDisplayBreakdown && currentDisplayBreakdown.length > 0 && (
-                      <div class="breakdown-section">
-                        <div class="grammar-title">Word Breakdown</div>
-                        <div class="breakdown-row">
-                          {currentDisplayBreakdown.map((part, i) => (
-                            <React.Fragment key={i}>
-                              {i > 0 && <span class="breakdown-plus">+</span>}
-                              <div class="breakdown-chip">
-                                <span class="breakdown-text">{part.text}</span>
-                                <span class="breakdown-gloss">{part.gloss}</span>
-                              </div>
-                            </React.Fragment>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Conjugations */}
-                    {currentDisplayConjugations && (
-                      <div class="grammar-section">
-                        <div class="grammar-title">Tense &amp; Forms</div>
-                        <div class="conjugation-grid">
-                          {CONJ_KEYS.map(k => (
-                            currentDisplayConjugations[k] ? (
-                              <React.Fragment key={k}>
-                                <div class={`conj-label ${CONJ_GROUP_STARTS.has(k) ? 'conj-group-start' : ''}`}>{k.replace(/([A-Z])/g, ' $1').toLowerCase()}</div>
-                                <div class={`conj-value-group ${CONJ_GROUP_STARTS.has(k) ? 'conj-group-start' : ''}`}>
-                                  <div class="conj-value">{currentDisplayConjugations[k]}</div>
-                                  {currentHiraganaConjugations?.[k] && currentHiraganaConjugations[k] !== currentDisplayConjugations[k] && (
-                                    <div class="conj-hiragana muted">{currentHiraganaConjugations[k]}</div>
-                                  )}
-                                  <div class="conj-romaji muted">{wanakana.toRomaji(currentHiraganaConjugations?.[k] || currentDisplayConjugations[k])}</div>
-                                </div>
-                                <div class={`conj-english muted ${CONJ_GROUP_STARTS.has(k) ? 'conj-group-start' : ''}`}>{getConjugationEnglish(currentCard, k)}</div>
-                              </React.Fragment>
-                            ) : null
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Particle Usage */}
-                    {currentDisplayParticleUsage && currentDisplayParticleUsage.length > 0 && (
-                      <div class="particle-section">
-                        <div class="grammar-title">Common Particles</div>
-                        <div class="particle-list">
-                          {currentDisplayParticleUsage.map((p, i) => (
-                            <div key={i} class="particle-row">
-                              <span class="particle-tag">{p.particle}</span>
-                              <div class="particle-text">
-                                <span class="particle-phrase">{p.phrase}</span>
-                                <span class="particle-english muted">{p.english}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Example Sentence */}
                     {currentCard.exampleSentence && (
                       <div class="sentence-section" style={{ display: 'block' }}>
                         <div class="sentence-card">
-                          <p class="sentence-japanese">
-                            <SentenceTokens sentence={currentCard.exampleSentence} showKanji={showKanji} onTokenTap={lookupSentenceToken} />
+                          <p class="sentence-kannada">
+                            <SentenceTokens sentence={currentCard.exampleSentence} onTokenTap={lookupSentenceToken} />
                           </p>
-                          {formatSentenceRomaji(currentCard.exampleSentence) && (
-                            <p class="sentence-romaji muted">
-                              {formatSentenceRomaji(currentCard.exampleSentence)}
+                          {currentCard.exampleSentence.transliteration && (
+                            <p class="sentence-transliteration muted">
+                              {currentCard.exampleSentence.transliteration}
                             </p>
                           )}
                           <div class="sentence-divider"></div>
                           <p class="sentence-english">{currentCard.exampleSentence.english}</p>
-                          <WordLookupPopover lookup={sentenceLookup} showKanji={showKanji} onClose={() => setSentenceLookup(null)} />
+                          <WordLookupPopover lookup={sentenceLookup} onClose={() => setSentenceLookup(null)} />
                         </div>
                       </div>
                     )}
@@ -1987,7 +1546,7 @@ export default function App() {
           </div>
           <div id="missed-thumbnails">
             {unknown.map(c => (
-              <div key={c.id} class="missed-thumb">{c.kanji || c.hiragana}</div>
+              <div key={c.id} class="missed-thumb">{c.kannada}</div>
             ))}
           </div>
           <button
@@ -2009,4 +1568,3 @@ export default function App() {
     </>
   );
 }
-

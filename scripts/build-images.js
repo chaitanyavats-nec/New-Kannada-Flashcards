@@ -4,9 +4,8 @@
 //
 //   node scripts/build-images.js
 //
-// image-map.json maps a word (kanji, or hiragana when there is no kanji) to
-// the emoji shown on the front of its flashcard. Twemoji is CC BY 4.0
-// (credited in the app footer).
+// image-map.json maps a Kannada word to the emoji shown on the front of its
+// flashcard. Twemoji is CC BY 4.0 (credited in the app footer).
 const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');

@@ -1,30 +1,27 @@
 {
-  "name": "japanese-flashcards",
+  "name": "new-kannada-flashcards",
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:cards": "node scripts/build-cards.js"
+    "build:images": "node scripts/build-images.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/chaitanyavats-nec/Kannada-Flashcards.git"
+    "url": "git+https://github.com/chaitanyavats-nec/New-Kannada-Flashcards.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/chaitanyavats-nec/Kannada-Flashcards/issues"
+    "url": "https://github.com/chaitanyavats-nec/New-Kannada-Flashcards/issues"
   },
-  "homepage": "https://github.com/chaitanyavats-nec/Kannada-Flashcards#readme",
-  "description": "A Japanese vocabulary flashcard app.",
+  "homepage": "https://github.com/chaitanyavats-nec/New-Kannada-Flashcards#readme",
+  "description": "A Kannada vocabulary flashcard app.",
   "dependencies": {
-    "kuroshiro": "^1.2.0",
-    "kuroshiro-analyzer-kuromoji": "^1.1.0",
-    "node-fetch": "^2.7.0",
-    "wanakana": "^5.3.1"
+    "node-fetch": "^2.7.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.1",
